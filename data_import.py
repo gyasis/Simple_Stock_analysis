@@ -1,30 +1,52 @@
-# import requests
-# import json
-
-# url = 'https://finance.yahoo.com/quote/AAPL/history?p=AAPL'
-# response = requests.get(url)
-# data = json.loads(response.text)
-
 import yfinance as yf
-import pandas as pd
+from multiprocessing import Pool
+from tqdm import tqdm
+from finnhub_utils import search_companies
 
-# Define a list of ticker symbols for the companies you want to retrieve data for
-tickers = ['AAPL', 'MSFT', 'AMZN', 'GOOG', 'FB']
+def get_stock_data(search_term, pe_ratio=None, roe=None):
+    """
+    Search for companies based on the given search term and additional criteria, and fetch historical stock data for each company.
 
-# Create an empty DataFrame to store the data
-df = pd.DataFrame()
+    Args:
+        search_term (str): The search term to use to filter companies.
+        pe_ratio (float): The maximum P/E ratio to filter companies by.
+        roe (float): The minimum ROE to filter companies by.
 
-# Loop through each ticker symbol and retrieve historical data using the yfinance library
-for ticker in tickers:
-    # Use the Ticker function from yfinance to get the historical data for the ticker symbol
-    stock_data = yf.Ticker(ticker).history(period='max')
-    # Add a new column to the DataFrame with the ticker symbol
-    stock_data['Ticker'] = ticker
-    # Append the data for this ticker to the main DataFrame
-    df = df.append(stock_data)
+    Returns:
+        pandas.DataFrame: A DataFrame containing the historical stock data for each company.
+    """
 
-# Reset the index of the DataFrame
-df = df.reset_index()
+    # Use the search_companies function to get a list of ticker symbols
+    tickers = search_companies(search_term, pe_ratio, roe)
 
-# Print the DataFrame
-print(df)
+    # Determine the number of available CPU cores
+    num_cores = multiprocessing.cpu_count()
+
+    # Get the amount of available memory in bytes
+    available_memory = psutil.virtual_memory().available
+
+    # Calculate the maximum amount of memory per worker process (in bytes)
+    max_memory_per_worker = available_memory // num_cores
+
+    # Define a function to download the stock data for a single company
+    def download_stock_data(ticker):
+        try:
+            # Use yfinance to fetch the historical stock data for the ticker symbol
+            data = yf.download(ticker, start='2010-01-01')
+            return data
+        except Exception as e:
+            print(f"Error fetching data for {ticker}: {e}")
+            return None
+
+    # Create a Pool of worker processes to download the stock data in parallel
+    with Pool(processes=num_cores, maxtasksperchild=1) as pool:
+        # Use tqdm to display a progress bar while the data is being downloaded
+        stock_data = list(tqdm(pool.imap(download_stock_data, tickers), total=len(tickers)))
+
+    # Filter out any None values that may have been returned due to errors during the download
+    stock_data = [data for data in stock_data if data is not None]
+
+    # Concatenate the list of dataframes into a single dataframe
+    all_data = pd.concat(stock_data)
+
+    return all_data
