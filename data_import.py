@@ -6,13 +6,21 @@ import multiprocessing
 import psutil
 import pandas as pd
 
-
 def download_stock_data(ticker):
     try:
         # Use yfinance to fetch the historical stock data for the ticker symbol
         data = yf.download(ticker, start='2010-01-01')
-        data['ticker'] = ticker
-        data.reset_index(inplace=True)
+
+        # Convert ticker symbol to company name
+        company_name = yf.Ticker(ticker).info['longName']
+
+        # Add columns for company name, stock name, and date
+        stock_name = ticker
+        data['company_name'] = company_name
+        data['stock_name'] = stock_name
+        data = data.reset_index()
+        data = data.rename(columns={'Open': 'open_price', 'High': 'high_price', 'Low': 'low_price', 'Close': 'close_price', 'Volume': 'volume', 'Date': 'date'})
+
         return data
     except Exception as e:
         print(f"Error fetching data for {ticker}: {e}")
@@ -21,15 +29,10 @@ def download_stock_data(ticker):
 
 def get_stock_data():
     """
-    Search for companies based on the given search term and additional criteria, and fetch historical stock data for each company.
-
-    Args:
-        search_term (str): The search term to use to filter companies. Default is 'top 100'.
-        pe_ratio (float): The maximum P/E ratio to filter companies by.
-        roe (float): The minimum ROE to filter companies by.
+    Fetch historical stock data for a set of companies and their stocks, and combine the data into a single DataFrame.
 
     Returns:
-        pandas.DataFrame: A DataFrame containing the historical stock data for each company.
+        pandas.DataFrame: A DataFrame containing the historical stock data for the selected companies and stocks.
     """
 
     # Check if a cached data file already exists
@@ -39,7 +42,6 @@ def get_stock_data():
         print("Loading cached data...")
         all_data = pd.read_csv(cache_file_path)
         all_data['date'] = pd.to_datetime(all_data['date'])
-
         return all_data
 
     # Use the search_companies function to get a list of ticker symbols
@@ -68,7 +70,7 @@ def get_stock_data():
     # Save the data to a cached data file for future use
     os.makedirs(os.path.dirname(cache_file_path), exist_ok=True)
     all_data.to_csv(cache_file_path, index=False)
-    print(all_data.head())
+
     return all_data
 
-get_stock_data()
+
