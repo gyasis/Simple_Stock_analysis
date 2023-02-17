@@ -1,6 +1,6 @@
 import finnhub
 
-def search_companies(search_term, pe_ratio=None, roe=None):
+def search_companies(search_term='us', pe_ratio=None, roe=None):
     """
     Search for companies based on the given search term and additional criteria.
 
@@ -12,7 +12,7 @@ def search_companies(search_term, pe_ratio=None, roe=None):
     Returns:
         list: A list of ticker symbols for the filtered companies.
     """
-
+    print("Setting up Finnhub client...")
     # Set up a client for the Finnhub API using your API key
     finnhub_client = finnhub.Client(api_key='cfnbiipr01qokr93c96gcfnbiipr01qokr93c970')
 
@@ -23,6 +23,8 @@ def search_companies(search_term, pe_ratio=None, roe=None):
 
     # Retrieve a list of stock symbols that match the search term, including the headers dictionary in the request
     result = finnhub_client.stock_symbols(query=search_term, headers=headers)
+
+    print(result)
 
     # Extract the ticker symbols from the search result
     tickers = [entry['symbol'] for entry in result]
@@ -54,3 +56,19 @@ def search_companies(search_term, pe_ratio=None, roe=None):
 
     # Return the list of filtered ticker symbols
     return filtered_tickers
+
+
+print("Setting up Finnhub client...")
+# Set up a client for the Finnhub API using your API key
+finnhub_client = finnhub.Client(api_key='cfnbiipr01qokr93c96gcfnbiipr01qokr93c970')
+
+# Set up the headers dictionary to include the X-Finnhub-Secret field
+headers = {
+    'X-Finnhub-Secret': 'cfnbiipr01qokr93c980'
+}
+search_term='us'
+
+# Retrieve a list of stock symbols that match the search term, including the headers dictionary in the request
+result = finnhub_client.stock_symbols('us', exchanges='US')
+
+print(result)
